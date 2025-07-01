@@ -125,10 +125,6 @@ def register_wikipedia_resources(mcp_server):
                         }
                     }
                 },
-                "content_extract": {
-                    "type": "string",
-                    "description": "Plain text extract from the page content"
-                },
                 "hyperlinked_words": {
                     "type": "array",
                     "description": "List of words/phrases that are hyperlinked in the page",
@@ -138,14 +134,14 @@ def register_wikipedia_resources(mcp_server):
                 },
                 "categories": {
                     "type": "array",
-                    "description": "Categories the page belongs to (optional, only included if include_categories=true)",
+                    "description": "Categories the page belongs to",
                     "items": {
                         "type": "string"
                     }
                 },
                 "page_info": {
                     "type": "object",
-                    "description": "Technical page information (optional, only included if include_page_info=true)",
+                    "description": "Technical page information",
                     "properties": {
                         "length": {
                             "type": "integer",
@@ -169,6 +165,161 @@ def register_wikipedia_resources(mcp_server):
                 "full_content": {
                     "type": "string",
                     "description": "Full wikitext content (optional, only included if include_full_content=true)"
+                }
+            },
+            "required": ["success", "page_title"]
+        }
+        return json.dumps(schema, indent=2)
+    
+    @mcp_server.resource(
+        uri="wikipedia://schema/page-summary",
+        name="Wikipedia Page Summary Schema",
+        description="JSON schema for Wikipedia page summary returned by get_wikipedia_page_summary tool"
+    )
+    def wikipedia_page_summary_schema() -> str:
+        """Return the JSON schema for Wikipedia page summary."""
+        schema = {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "title": "Wikipedia Page Summary",
+            "description": "Schema for Wikipedia page summary",
+            "properties": {
+                "success": {
+                    "type": "boolean",
+                    "description": "Whether the request was successful"
+                },
+                "page_title": {
+                    "type": "string",
+                    "description": "The title of the Wikipedia page"
+                },
+                "language": {
+                    "type": "string",
+                    "description": "Wikipedia language code"
+                },
+                "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Direct URL to the Wikipedia page"
+                },
+                "summary": {
+                    "type": "string",
+                    "description": "Brief summary text from page summary"
+                },
+                "extract": {
+                    "type": "string",
+                    "description": "Content extract with specified number of sentences"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Short page description"
+                }
+            },
+            "required": ["success", "page_title"]
+        }
+        return json.dumps(schema, indent=2)
+    
+    @mcp_server.resource(
+        uri="wikipedia://schema/page-sections",
+        name="Wikipedia Page Sections Schema",
+        description="JSON schema for Wikipedia page sections returned by get_wikipedia_page_sections tool"
+    )
+    def wikipedia_page_sections_schema() -> str:
+        """Return the JSON schema for Wikipedia page sections."""
+        schema = {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "title": "Wikipedia Page Sections",
+            "description": "Schema for Wikipedia page sections",
+            "properties": {
+                "success": {
+                    "type": "boolean",
+                    "description": "Whether the request was successful"
+                },
+                "page_title": {
+                    "type": "string",
+                    "description": "The title of the Wikipedia page"
+                },
+                "language": {
+                    "type": "string",
+                    "description": "Wikipedia language code"
+                },
+                "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Direct URL to the Wikipedia page"
+                },
+                "sections": {
+                    "type": "array",
+                    "description": "List of page sections",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "index": {
+                                "type": "string",
+                                "description": "Section index"
+                            },
+                            "title": {
+                                "type": "string",
+                                "description": "Section title"
+                            },
+                            "level": {
+                                "type": "integer",
+                                "description": "Section level (1, 2, 3, etc.)"
+                            },
+                            "anchor": {
+                                "type": "string",
+                                "description": "Section anchor for direct linking"
+                            },
+                            "number": {
+                                "type": "string",
+                                "description": "Section number"
+                            }
+                        },
+                        "required": ["index", "title", "level"]
+                    }
+                }
+            },
+            "required": ["success", "page_title"]
+        }
+        return json.dumps(schema, indent=2)
+    
+    @mcp_server.resource(
+        uri="wikipedia://schema/sections-info",
+        name="Wikipedia Page Sections Info Schema",
+        description="JSON schema for Wikipedia page sections content returned by get_wikipedia_page_sections_info tool"
+    )
+    def wikipedia_page_sections_info_schema() -> str:
+        """Return the JSON schema for Wikipedia page sections content."""
+        schema = {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "title": "Wikipedia Page Sections Content",
+            "description": "Schema for Wikipedia page sections content",
+            "properties": {
+                "success": {
+                    "type": "boolean",
+                    "description": "Whether the request was successful"
+                },
+                "page_title": {
+                    "type": "string",
+                    "description": "The title of the Wikipedia page"
+                },
+                "language": {
+                    "type": "string",
+                    "description": "Wikipedia language code"
+                },
+                "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Direct URL to the Wikipedia page"
+                },
+                "sections_content": {
+                    "type": "object",
+                    "description": "Dictionary mapping section identifiers to their content",
+                    "additionalProperties": {
+                        "type": ["string", "null"],
+                        "description": "Section content in wikitext format, or null if section not found"
+                    }
                 }
             },
             "required": ["success", "page_title"]
@@ -369,24 +520,6 @@ def register_wikipedia_resources(mcp_server):
                     "description": "Get full page content including wikitext",
                     "use_case": "When you need the complete article content for analysis (discouraged unless specifically needed)"
                 },
-                "with_categories": {
-                    "tool": "get_wikipedia_page_info",
-                    "input": {
-                        "page_title": "Machine learning",
-                        "include_categories": True
-                    },
-                    "description": "Get page information with categories for classification",
-                    "use_case": "When you need to understand how the topic is categorized (only use if specifically needed)"
-                },
-                "with_metadata": {
-                    "tool": "get_wikipedia_page_info",
-                    "input": {
-                        "page_title": "Artificial intelligence",
-                        "include_page_info": True
-                    },
-                    "description": "Get page with technical metadata like length and modification date",
-                    "use_case": "When you need technical details about the page itself (rarely needed)"
-                },
                 "multilingual_info": {
                     "tool": "get_wikipedia_page_info",
                     "input": {
@@ -395,6 +528,81 @@ def register_wikipedia_resources(mcp_server):
                     },
                     "description": "Get information from French Wikipedia",
                     "use_case": "When working with international sources"
+                }
+            },
+            "page_summary_examples": {
+                "basic_summary": {
+                    "tool": "get_wikipedia_page_summary",
+                    "input": {
+                        "page_title": "Artificial intelligence"
+                    },
+                    "description": "Get a quick 3-sentence summary of AI",
+                    "use_case": "When you need a brief overview of a topic"
+                },
+                "longer_summary": {
+                    "tool": "get_wikipedia_page_summary",
+                    "input": {
+                        "page_title": "Deep learning",
+                        "sentences": 5
+                    },
+                    "description": "Get a 5-sentence summary of deep learning",
+                    "use_case": "When you need more context than the default 3 sentences"
+                },
+                "multilingual_summary": {
+                    "tool": "get_wikipedia_page_summary",
+                    "input": {
+                        "page_title": "Aprendizaje automático",
+                        "language": "es",
+                        "sentences": 2
+                    },
+                    "description": "Get a brief Spanish summary of machine learning",
+                    "use_case": "For quick overviews in specific languages"
+                }
+            },
+            "page_sections_examples": {
+                "list_sections": {
+                    "tool": "get_wikipedia_page_sections",
+                    "input": {
+                        "page_title": "Artificial intelligence"
+                    },
+                    "description": "Get all sections of the AI article",
+                    "use_case": "When an article is large and you want to see the structure before requesting specific content"
+                },
+                "explore_large_page": {
+                    "tool": "get_wikipedia_page_sections",
+                    "input": {
+                        "page_title": "History of science"
+                    },
+                    "description": "View sections of a comprehensive historical article",
+                    "use_case": "For navigation of long, detailed articles"
+                }
+            },
+            "sections_content_examples": {
+                "specific_sections_by_title": {
+                    "tool": "get_wikipedia_page_sections_info",
+                    "input": {
+                        "page_title": "Machine learning",
+                        "section_titles": ["History", "Applications"]
+                    },
+                    "description": "Get content for History and Applications sections",
+                    "use_case": "When you know the section names you're interested in"
+                },
+                "specific_sections_by_index": {
+                    "tool": "get_wikipedia_page_sections_info",
+                    "input": {
+                        "page_title": "Python (programming language)",
+                        "section_indices": ["1", "3", "5"]
+                    },
+                    "description": "Get content for sections 1, 3, and 5",
+                    "use_case": "When you have section indices from get_wikipedia_page_sections"
+                },
+                "all_sections_content": {
+                    "tool": "get_wikipedia_page_sections_info",
+                    "input": {
+                        "page_title": "Natural language processing"
+                    },
+                    "description": "Get content for all sections of the NLP article",
+                    "use_case": "When you need complete structured content but want it organized by sections"
                 }
             },
             "workflow_examples": {
@@ -408,26 +616,38 @@ def register_wikipedia_resources(mcp_server):
                         },
                         {
                             "step": 2,
-                            "action": "get_wikipedia_page_info",
-                            "input": {"page_title": "Quantum computing"},
-                            "purpose": "Get detailed information about the main topic"
+                            "action": "get_wikipedia_page_summary",
+                            "input": {"page_title": "Quantum computing", "sentences": 5},
+                            "purpose": "Get a quick overview of the main topic"
                         },
                         {
                             "step": 3,
+                            "action": "get_wikipedia_page_sections",
+                            "input": {"page_title": "Quantum computing"},
+                            "purpose": "See the structure of the article to identify sections of interest"
+                        },
+                        {
+                            "step": 4,
+                            "action": "get_wikipedia_page_sections_info",
+                            "input": {"page_title": "Quantum computing", "section_titles": ["Applications", "Quantum algorithms"]},
+                            "purpose": "Get detailed content for specific sections of interest"
+                        },
+                        {
+                            "step": 5,
                             "action": "get_wikipedia_page_info",
                             "input": {"page_title": "Quantum algorithm"},
                             "purpose": "Explore related topics from hyperlinks"
                         }
                     ],
-                    "description": "Research workflow for exploring a new topic systematically"
+                    "description": "Comprehensive research workflow for exploring a new topic systematically"
                 },
                 "fact_checking": {
                     "steps": [
                         {
                             "step": 1,
-                            "action": "check_wikipedia_page_exists",
-                            "input": {"page_title": "Specific claim or topic"},
-                            "purpose": "Verify the topic has a Wikipedia page"
+                            "action": "search_wikipedia_pages",
+                            "input": {"query": "specific claim or topic"},
+                            "purpose": "Find the most relevant page for the claim"
                         },
                         {
                             "step": 2,
@@ -437,6 +657,58 @@ def register_wikipedia_resources(mcp_server):
                         }
                     ],
                     "description": "Quick fact-checking workflow"
+                },
+                "large_article_exploration": {
+                    "steps": [
+                        {
+                            "step": 1,
+                            "action": "get_wikipedia_page_summary",
+                            "input": {"page_title": "History of science"},
+                            "purpose": "Get an overview of the large article"
+                        },
+                        {
+                            "step": 2,
+                            "action": "get_wikipedia_page_sections",
+                            "input": {"page_title": "History of science"},
+                            "purpose": "See all available sections to choose what to read"
+                        },
+                        {
+                            "step": 3,
+                            "action": "get_wikipedia_page_sections_info",
+                            "input": {"page_title": "History of science", "section_titles": ["Ancient history", "Medieval science"]},
+                            "purpose": "Get content for only the sections you're interested in"
+                        }
+                    ],
+                    "description": "Efficient workflow for exploring large Wikipedia articles without overwhelming content"
+                },
+                "comparative_analysis": {
+                    "steps": [
+                        {
+                            "step": 1,
+                            "action": "get_wikipedia_page_sections",
+                            "input": {"page_title": "Machine learning"},
+                            "purpose": "Get structure of first topic"
+                        },
+                        {
+                            "step": 2,
+                            "action": "get_wikipedia_page_sections",
+                            "input": {"page_title": "Deep learning"},
+                            "purpose": "Get structure of second topic"
+                        },
+                        {
+                            "step": 3,
+                            "action": "get_wikipedia_page_sections_info",
+                            "input": {"page_title": "Machine learning", "section_titles": ["Applications", "Algorithms"]},
+                            "purpose": "Get specific content from first topic"
+                        },
+                        {
+                            "step": 4,
+                            "action": "get_wikipedia_page_sections_info",
+                            "input": {"page_title": "Deep learning", "section_titles": ["Applications", "Algorithms"]},
+                            "purpose": "Get matching content from second topic for comparison"
+                        }
+                    ],
+                    "description": "Workflow for comparing similar topics by examining equivalent sections"
                 }
             }
         }
@@ -478,26 +750,38 @@ def register_wikipedia_resources(mcp_server):
                     "Check page existence first for uncertain titles"
                 ],
                 "content_usage": [
-                    "Use summary for quick overviews",
-                    "Use extract for readable introductions",
+                    "Use summary for quick overviews (get_wikipedia_page_summary)",
+                    "Use page info for comprehensive information (get_wikipedia_page_info)",
+                    "Use sections listing to navigate large articles (get_wikipedia_page_sections)",
+                    "Use section content for targeted information (get_wikipedia_page_sections_info)",
                     "Use hyperlinked words to discover related topics",
-                    "Avoid optional parameters unless specifically needed:",
-                    "  - include_categories: Only for classification/organization tasks",
-                    "  - include_page_info: Only when technical metadata is required",
-                    "  - include_full_content: Only for deep content analysis"
+                    "Avoid full content unless specifically needed for deep analysis"
                 ],
-                "parameter_optimization": [
-                    "Default parameters are optimized for most use cases",
-                    "Only enable optional parameters when their data is essential",
-                    "Categories add API overhead - use sparingly",
-                    "Page info is rarely needed for content tasks",
-                    "Full content should be last resort due to size"
+                "tool_selection": [
+                    "get_wikipedia_page_summary: Best for quick overviews and introductions",
+                    "get_wikipedia_page_info: Best for comprehensive topic research",
+                    "get_wikipedia_page_sections: Best for exploring article structure",
+                    "get_wikipedia_page_sections_info: Best for targeted section content",
+                    "search_wikipedia_pages: Best for discovering relevant articles"
+                ],
+                "large_article_strategy": [
+                    "Start with get_wikipedia_page_summary for overview",
+                    "Use get_wikipedia_page_sections to see article structure",
+                    "Select specific sections with get_wikipedia_page_sections_info",
+                    "This approach is more efficient than loading full content"
+                ],
+                "section_usage": [
+                    "Use section titles when you know the exact section names",
+                    "Use section indices when working with section list results",
+                    "Request multiple sections in one call when possible",
+                    "If no sections specified, all sections will be returned"
                 ],
                 "performance_optimization": [
                     "Start with summaries before requesting full content",
-                    "Cache frequently accessed pages",
-                    "Use the existence check to avoid failed requests",
-                    "Limit hyperlink retrieval to reasonable numbers"
+                    "Use section tools for large articles to reduce data transfer",
+                    "Cache frequently accessed pages and sections",
+                    "Limit hyperlink retrieval to reasonable numbers",
+                    "Consider using section tools instead of full page content"
                 ]
             },
             "error_handling": [
@@ -528,6 +812,24 @@ WIKIPEDIA_RESOURCES = [
         "uri": "wikipedia://schema/page-info",
         "name": "Wikipedia Page Info Schema", 
         "description": "JSON schema for Wikipedia page information",
+        "mimeType": "application/json"
+    },
+    {
+        "uri": "wikipedia://schema/page-summary",
+        "name": "Wikipedia Page Summary Schema", 
+        "description": "JSON schema for Wikipedia page summary",
+        "mimeType": "application/json"
+    },
+    {
+        "uri": "wikipedia://schema/page-sections",
+        "name": "Wikipedia Page Sections Schema", 
+        "description": "JSON schema for Wikipedia page sections",
+        "mimeType": "application/json"
+    },
+    {
+        "uri": "wikipedia://schema/sections-info",
+        "name": "Wikipedia Page Sections Info Schema", 
+        "description": "JSON schema for Wikipedia page sections content",
         "mimeType": "application/json"
     },
     {
