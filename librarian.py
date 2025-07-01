@@ -2,14 +2,16 @@ from typing import Any
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-# Import Wikipedia tools
+# Import Wikipedia tools and resources
 from tools.wikipedia_tools import register_wikipedia_tools
+from resources.wikipedia_resources import register_wikipedia_resources
 
 # Initialize FastMCP server
 mcp = FastMCP("librarian")
 
-# Register Wikipedia tools
+# Register Wikipedia tools and resources
 register_wikipedia_tools(mcp)
+register_wikipedia_resources(mcp)
 
 # Constants
 NWS_API_BASE = "https://librarian.mlziade.com.br"
