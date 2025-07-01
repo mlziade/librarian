@@ -67,9 +67,7 @@ def register_wikipedia_tools(mcp_server):
                         "snippet": snippet,
                         "url": url,
                         "word_count": word_count,
-                        "size_bytes": size,
-                        "last_modified": timestamp,
-                        "relevance_info": f"{word_count} words, {size} bytes"
+                        "last_modified": timestamp
                     })
                 
                 return {

@@ -64,17 +64,9 @@ def register_wikipedia_resources(mcp_server):
                                 "type": "integer",
                                 "description": "Number of words in the page"
                             },
-                            "size_bytes": {
-                                "type": "integer",
-                                "description": "Page size in bytes"
-                            },
                             "last_modified": {
                                 "type": "string",
                                 "description": "Last modification timestamp"
-                            },
-                            "relevance_info": {
-                                "type": "string",
-                                "description": "Human-readable relevance information"
                             }
                         },
                         "required": ["title", "snippet", "url"]
