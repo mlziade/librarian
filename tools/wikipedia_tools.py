@@ -92,7 +92,9 @@ def register_wikipedia_tools(mcp_server):
     def get_wikipedia_page_info(
         page_title: str,
         language: str = "en",
-        include_full_content: bool = False
+        include_full_content: bool = False,
+        include_categories: bool = False,
+        include_page_info: bool = False
     ) -> Dict[str, Any]:
         """
         Get comprehensive information about a Wikipedia page.
@@ -101,9 +103,11 @@ def register_wikipedia_tools(mcp_server):
             page_title: The title of the Wikipedia page
             language: Wikipedia language code (default: "en")
             include_full_content: Whether to include full wikitext content (default: False)
+            include_categories: Whether to include page categories (default: False)
+            include_page_info: Whether to include detailed page metadata (default: False)
             
         Returns:
-            Dict containing page summary, extract, links, and optionally full content
+            Dict containing page summary, extract, links, and optionally full content, categories, and page info
         """
         try:
             with WikipediaAPI(language=language) as api:
@@ -116,11 +120,11 @@ def register_wikipedia_tools(mcp_server):
                     }
                 
                 # Get page information
-                page_info = api.get_page_info(page_title)
+                page_info = api.get_page_info(page_title) if include_page_info else None
                 summary = api.get_page_summary(page_title)
                 extract = api.get_page_extract(page_title, sentences=5)
                 links = api.get_page_links(page_title, limit=50)
-                categories = api.get_page_categories(page_title)
+                categories = api.get_page_categories(page_title) if include_categories else None
                 
                 # Construct the response
                 result = {
@@ -134,15 +138,21 @@ def register_wikipedia_tools(mcp_server):
                         "type": summary.get('type', '') if summary else ''
                     },
                     "content_extract": extract or "No extract available",
-                    "hyperlinked_words": links or [],
-                    "categories": categories or [],
-                    "page_info": {
+                    "hyperlinked_words": links or []
+                }
+                
+                # Optionally include categories
+                if include_categories:
+                    result["categories"] = categories or []
+                
+                # Optionally include page info
+                if include_page_info:
+                    result["page_info"] = {
                         "length": page_info.get('length', 0) if page_info else 0,
                         "last_modified": page_info.get('touched', '') if page_info else '',
                         "page_id": page_info.get('pageid', '') if page_info else '',
                         "canonical_url": page_info.get('canonicalurl', '') if page_info else ''
                     }
-                }
                 
                 # Optionally include full content
                 if include_full_content:
@@ -291,7 +301,17 @@ WIKIPEDIA_TOOLS = [
                 },
                 "include_full_content": {
                     "type": "boolean",
-                    "description": "Whether to include full wikitext content (default: false)",
+                    "description": "Whether to include full wikitext content (default: false). Only use if you specifically need the raw wiki markup.",
+                    "default": False
+                },
+                "include_categories": {
+                    "type": "boolean",
+                    "description": "Whether to include page categories (default: false). Only use if you specifically need category information for classification or organization purposes.",
+                    "default": False
+                },
+                "include_page_info": {
+                    "type": "boolean",
+                    "description": "Whether to include detailed page metadata like length, last modified date, and page ID (default: false). Only use if you specifically need technical page details.",
                     "default": False
                 }
             },

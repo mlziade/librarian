@@ -138,14 +138,14 @@ def register_wikipedia_resources(mcp_server):
                 },
                 "categories": {
                     "type": "array",
-                    "description": "Categories the page belongs to",
+                    "description": "Categories the page belongs to (optional, only included if include_categories=true)",
                     "items": {
                         "type": "string"
                     }
                 },
                 "page_info": {
                     "type": "object",
-                    "description": "Technical page information",
+                    "description": "Technical page information (optional, only included if include_page_info=true)",
                     "properties": {
                         "length": {
                             "type": "integer",
@@ -168,7 +168,7 @@ def register_wikipedia_resources(mcp_server):
                 },
                 "full_content": {
                     "type": "string",
-                    "description": "Full wikitext content (optional, if requested)"
+                    "description": "Full wikitext content (optional, only included if include_full_content=true)"
                 }
             },
             "required": ["success", "page_title"]
@@ -367,7 +367,25 @@ def register_wikipedia_resources(mcp_server):
                         "include_full_content": True
                     },
                     "description": "Get full page content including wikitext",
-                    "use_case": "When you need the complete article content for analysis"
+                    "use_case": "When you need the complete article content for analysis (discouraged unless specifically needed)"
+                },
+                "with_categories": {
+                    "tool": "get_wikipedia_page_info",
+                    "input": {
+                        "page_title": "Machine learning",
+                        "include_categories": True
+                    },
+                    "description": "Get page information with categories for classification",
+                    "use_case": "When you need to understand how the topic is categorized (only use if specifically needed)"
+                },
+                "with_metadata": {
+                    "tool": "get_wikipedia_page_info",
+                    "input": {
+                        "page_title": "Artificial intelligence",
+                        "include_page_info": True
+                    },
+                    "description": "Get page with technical metadata like length and modification date",
+                    "use_case": "When you need technical details about the page itself (rarely needed)"
                 },
                 "multilingual_info": {
                     "tool": "get_wikipedia_page_info",
@@ -463,7 +481,17 @@ def register_wikipedia_resources(mcp_server):
                     "Use summary for quick overviews",
                     "Use extract for readable introductions",
                     "Use hyperlinked words to discover related topics",
-                    "Use categories to understand topic classification"
+                    "Avoid optional parameters unless specifically needed:",
+                    "  - include_categories: Only for classification/organization tasks",
+                    "  - include_page_info: Only when technical metadata is required",
+                    "  - include_full_content: Only for deep content analysis"
+                ],
+                "parameter_optimization": [
+                    "Default parameters are optimized for most use cases",
+                    "Only enable optional parameters when their data is essential",
+                    "Categories add API overhead - use sparingly",
+                    "Page info is rarely needed for content tasks",
+                    "Full content should be last resort due to size"
                 ],
                 "performance_optimization": [
                     "Start with summaries before requesting full content",
