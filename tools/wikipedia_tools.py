@@ -312,7 +312,8 @@ def register_wikipedia_tools(mcp_server):
     def get_wikipedia_page_info(
         page_title: str,
         language: str = "en",
-        include_full_content: bool = False
+        include_full_content: bool = False,
+        include_categories: bool = False
     ) -> dict[str, object]:
         """
         Get comprehensive information about a Wikipedia page.
@@ -321,6 +322,7 @@ def register_wikipedia_tools(mcp_server):
             page_title: The title of the Wikipedia page
             language: Wikipedia language code (default: "en")
             include_full_content: Whether to include full wikitext content (default: False)
+            include_categories: Whether to include page categories (default: False)
             
         Returns:
             Dict containing:
@@ -333,7 +335,7 @@ def register_wikipedia_tools(mcp_server):
                 - description: Short description
                 - type: Page type (e.g., "standard", "disambiguation")
             - hyperlinked_words: List of linked page titles from the page
-            - categories: List of page categories
+            - categories: List of page categories (only if include_categories=True)
             - page_info: Dictionary with technical details:
                 - length: Page length in bytes
                 - last_modified: Last modification timestamp
@@ -360,7 +362,7 @@ def register_wikipedia_tools(mcp_server):
                 page_info = api.get_page_info(page_title)
                 summary = api.get_page_summary(page_title)
                 links = api.get_page_links(page_title, limit=50)
-                categories = api.get_page_categories(page_title)
+                categories = api.get_page_categories(page_title) if include_categories else None
                 
                 # Construct the response
                 result = {
@@ -374,7 +376,6 @@ def register_wikipedia_tools(mcp_server):
                         "type": summary.get('type', '') if summary else ''
                     },
                     "hyperlinked_words": links or [],
-                    "categories": categories or [],
                     "page_info": {
                         "length": page_info.get('length', 0) if page_info else 0,
                         "last_modified": page_info.get('touched', '') if page_info else '',
@@ -382,6 +383,10 @@ def register_wikipedia_tools(mcp_server):
                         "canonical_url": page_info.get('canonicalurl', '') if page_info else ''
                     }
                 }
+                
+                # Optionally include categories
+                if include_categories:
+                    result["categories"] = categories or []
                 
                 # Optionally include full content
                 if include_full_content:
@@ -513,6 +518,11 @@ WIKIPEDIA_TOOLS = [
                 "include_full_content": {
                     "type": "boolean",
                     "description": "Whether to include full wikitext content (default: false). Only use if you specifically need the raw wiki markup.",
+                    "default": False
+                },
+                "include_categories": {
+                    "type": "boolean",
+                    "description": "Whether to include page categories (default: false). Only use if you specifically need category information for classification or organization purposes.",
                     "default": False
                 }
             },

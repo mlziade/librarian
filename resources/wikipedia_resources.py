@@ -134,7 +134,7 @@ def register_wikipedia_resources(mcp_server):
                 },
                 "categories": {
                     "type": "array",
-                    "description": "Categories the page belongs to",
+                    "description": "Categories the page belongs to (only if include_categories=True)",
                     "items": {
                         "type": "string"
                     }
@@ -520,6 +520,15 @@ def register_wikipedia_resources(mcp_server):
                     "description": "Get full page content including wikitext",
                     "use_case": "When you need the complete article content for analysis (discouraged unless specifically needed)"
                 },
+                "with_categories": {
+                    "tool": "get_wikipedia_page_info",
+                    "input": {
+                        "page_title": "Machine learning",
+                        "include_categories": True
+                    },
+                    "description": "Get page information with categories for classification",
+                    "use_case": "When you need to understand how the topic is categorized (only use if specifically needed)"
+                },
                 "multilingual_info": {
                     "tool": "get_wikipedia_page_info",
                     "input": {
@@ -755,7 +764,8 @@ def register_wikipedia_resources(mcp_server):
                     "Use sections listing to navigate large articles (get_wikipedia_page_sections)",
                     "Use section content for targeted information (get_wikipedia_page_sections_info)",
                     "Use hyperlinked words to discover related topics",
-                    "Avoid full content unless specifically needed for deep analysis"
+                    "Avoid full content unless specifically needed for deep analysis",
+                    "Avoid categories unless needed for classification/organization tasks"
                 ],
                 "tool_selection": [
                     "get_wikipedia_page_summary: Best for quick overviews and introductions",
