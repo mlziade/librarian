@@ -5,7 +5,6 @@ This module provides MCP tools for querying Wikipedia pages, including search
 functionality and detailed page information retrieval.
 """
 
-from typing import Any, Dict, List, Optional
 import sys
 import os
 
@@ -26,7 +25,7 @@ def register_wikipedia_tools(mcp_server):
     def search_wikipedia_pages(
         query: str,
         language: str = "en"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """
         Search for Wikipedia pages and return the top 5 results with selection information.
         
@@ -95,7 +94,7 @@ def register_wikipedia_tools(mcp_server):
         include_full_content: bool = False,
         include_categories: bool = False,
         include_page_info: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """
         Get comprehensive information about a Wikipedia page.
         
@@ -176,7 +175,7 @@ def register_wikipedia_tools(mcp_server):
         page_title: str,
         language: str = "en",
         sentences: int = 3
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """
         Get a quick summary of a Wikipedia page.
         
@@ -225,7 +224,7 @@ def register_wikipedia_tools(mcp_server):
     def check_wikipedia_page_exists(
         page_title: str,
         language: str = "en"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, object]:
         """
         Check if a Wikipedia page exists.
         
