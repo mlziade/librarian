@@ -6,7 +6,6 @@ It includes functions for searching, retrieving page content, getting summaries,
 """
 
 import httpx
-from typing import List, Dict, Optional, Any
 from urllib.parse import quote_plus
 
 
@@ -40,7 +39,7 @@ class WikipediaAPI:
         """Explicitly close the HTTP client."""
         self.client.close()
     
-    def search(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+    def search(self, query: str, limit: int = 10) -> list[dict[str, any]]:
         """
         Search for Wikipedia articles.
         
@@ -49,7 +48,7 @@ class WikipediaAPI:
             limit (int): Maximum number of results to return
             
         Returns:
-            List[Dict]: List of search results with title and snippet
+            list[dict]: List of search results with title and snippet
         """
         params = {
             'action': 'query',
@@ -69,7 +68,7 @@ class WikipediaAPI:
             print(f"Error searching Wikipedia: {e}")
             return []
     
-    def get_page_summary(self, title: str) -> Optional[Dict[str, Any]]:
+    def get_page_summary(self, title: str) -> dict[str, any] | None:
         """
         Get a summary of a Wikipedia page.
         
@@ -77,7 +76,7 @@ class WikipediaAPI:
             title (str): Page title
             
         Returns:
-            Optional[Dict]: Page summary including extract and basic info
+            dict | None: Page summary including extract and basic info
         """
         encoded_title = quote_plus(title.replace(' ', '_'))
         url = f"{self.base_url}/page/summary/{encoded_title}"
@@ -90,7 +89,7 @@ class WikipediaAPI:
             print(f"Error getting page summary for '{title}': {e}")
             return None
     
-    def get_page_content(self, title: str) -> Optional[str]:
+    def get_page_content(self, title: str) -> str | None:
         """
         Get the full content of a Wikipedia page.
         
@@ -98,7 +97,7 @@ class WikipediaAPI:
             title (str): Page title
             
         Returns:
-            Optional[str]: Page content in wikitext format
+            str | None: Page content in wikitext format
         """
         params = {
             'action': 'query',
@@ -125,7 +124,7 @@ class WikipediaAPI:
             print(f"Error getting page content for '{title}': {e}")
             return None
     
-    def get_page_sections(self, title: str) -> List[Dict[str, Any]]:
+    def get_page_sections(self, title: str) -> list[dict[str, any]]:
         """
         Get the table of contents (section structure) of a Wikipedia page.
         
@@ -133,7 +132,7 @@ class WikipediaAPI:
             title (str): Page title
             
         Returns:
-            List[Dict]: List of sections with index, title, level, and anchor
+            list[dict]: List of sections with index, title, level, and anchor
         """
         params = {
             'action': 'parse',
@@ -165,16 +164,16 @@ class WikipediaAPI:
             print(f"Error getting page sections for '{title}': {e}")
             return []
     
-    def get_page_sections_content(self, title: str, section_indices: List[str]) -> Dict[str, str]:
+    def get_page_sections_content(self, title: str, section_indices: list[str]) -> dict[str, str]:
         """
         Get the content of specific sections from a Wikipedia page.
         
         Args:
             title (str): Page title
-            section_indices (List[str]): List of section indices to retrieve
+            section_indices (list[str]): List of section indices to retrieve
             
         Returns:
-            Dict[str, str]: Dictionary mapping section indices to their content
+            dict[str, str]: Dictionary mapping section indices to their content
         """
         result = {}
         
@@ -203,16 +202,16 @@ class WikipediaAPI:
         
         return result
     
-    def get_page_sections_content_by_title(self, title: str, section_titles: List[str]) -> Dict[str, str]:
+    def get_page_sections_content_by_title(self, title: str, section_titles: list[str]) -> dict[str, str]:
         """
         Get the content of specific sections from a Wikipedia page by section titles.
         
         Args:
             title (str): Page title
-            section_titles (List[str]): List of section titles to retrieve
+            section_titles (list[str]): List of section titles to retrieve
             
         Returns:
-            Dict[str, str]: Dictionary mapping section titles to their content
+            dict[str, str]: Dictionary mapping section titles to their content
         """
         # First get all sections to find the indices
         sections = self.get_page_sections(title)
@@ -241,7 +240,7 @@ class WikipediaAPI:
         
         return result
     
-    def get_page_categories(self, title: str) -> List[str]:
+    def get_page_categories(self, title: str) -> list[str]:
         """
         Get categories for a Wikipedia page.
         
@@ -249,7 +248,7 @@ class WikipediaAPI:
             title (str): Page title
             
         Returns:
-            List[str]: List of category names
+            list[str]: List of category names
         """
         params = {
             'action': 'query',
@@ -274,7 +273,7 @@ class WikipediaAPI:
             print(f"Error getting categories for '{title}': {e}")
             return []
     
-    def get_page_links(self, title: str, limit: int = 100) -> List[str]:
+    def get_page_links(self, title: str, limit: int = 100) -> list[str]:
         """
         Get links from a Wikipedia page.
         
@@ -283,7 +282,7 @@ class WikipediaAPI:
             limit (int): Maximum number of links to return
             
         Returns:
-            List[str]: List of linked page titles
+            list[str]: List of linked page titles
         """
         params = {
             'action': 'query',
@@ -309,7 +308,7 @@ class WikipediaAPI:
             print(f"Error getting links for '{title}': {e}")
             return []
     
-    def get_page_images(self, title: str) -> List[Dict[str, str]]:
+    def get_page_images(self, title: str) -> list[dict[str, str]]:
         """
         Get images from a Wikipedia page.
         
@@ -317,7 +316,7 @@ class WikipediaAPI:
             title (str): Page title
             
         Returns:
-            List[Dict]: List of image information
+            list[dict]: List of image information
         """
         params = {
             'action': 'query',
@@ -341,7 +340,7 @@ class WikipediaAPI:
             print(f"Error getting images for '{title}': {e}")
             return []
     
-    def get_random_pages(self, count: int = 1) -> List[str]:
+    def get_random_pages(self, count: int = 1) -> list[str]:
         """
         Get random Wikipedia page titles.
         
@@ -349,7 +348,7 @@ class WikipediaAPI:
             count (int): Number of random pages to retrieve
             
         Returns:
-            List[str]: List of random page titles
+            list[str]: List of random page titles
         """
         params = {
             'action': 'query',
@@ -397,7 +396,7 @@ class WikipediaAPI:
             print(f"Error checking if page exists '{title}': {e}")
             return False
     
-    def get_page_info(self, title: str) -> Optional[Dict[str, Any]]:
+    def get_page_info(self, title: str) -> dict[str, any] | None:
         """
         Get basic information about a Wikipedia page.
         
@@ -405,7 +404,7 @@ class WikipediaAPI:
             title (str): Page title
             
         Returns:
-            Optional[Dict]: Page information including length, last modified, etc.
+            dict | None: Page information including length, last modified, etc.
         """
         params = {
             'action': 'query',
