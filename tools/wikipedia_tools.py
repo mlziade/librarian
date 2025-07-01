@@ -34,7 +34,21 @@ def register_wikipedia_tools(mcp_server):
             language: Wikipedia language code (default: "en")
             
         Returns:
-            Dict containing search results with titles, snippets, URLs, and metadata
+            Dict containing:
+            - success: Boolean indicating if the search was successful
+            - query: The original search query
+            - language: Language code used
+            - total_results: Number of results returned
+            - results: List of dictionaries, each containing:
+                - title: Page title
+                - snippet: Brief excerpt with search terms highlighted
+                - url: Direct link to the Wikipedia page
+                - word_count: Number of words in the page
+                - last_modified: Timestamp of last modification
+            Or if unsuccessful:
+            - success: False
+            - error: Error details
+            - message: Human-readable error message
         """
         try:
             with WikipediaAPI(language=language) as api:
@@ -85,89 +99,6 @@ def register_wikipedia_tools(mcp_server):
             }
     
     @mcp_server.tool(
-        name="get_wikipedia_page_info",
-        description="Get detailed information about a specific Wikipedia page including content, summary, and hyperlinked words"
-    )
-    def get_wikipedia_page_info(
-        page_title: str,
-        language: str = "en",
-        include_full_content: bool = False,
-        include_categories: bool = False,
-        include_page_info: bool = False
-    ) -> dict[str, object]:
-        """
-        Get comprehensive information about a Wikipedia page.
-        
-        Args:
-            page_title: The title of the Wikipedia page
-            language: Wikipedia language code (default: "en")
-            include_full_content: Whether to include full wikitext content (default: False)
-            include_categories: Whether to include page categories (default: False)
-            include_page_info: Whether to include detailed page metadata (default: False)
-            
-        Returns:
-            Dict containing page summary, extract, links, and optionally full content, categories, and page info
-        """
-        try:
-            with WikipediaAPI(language=language) as api:
-                # Check if page exists first
-                if not api.page_exists(page_title):
-                    return {
-                        "success": False,
-                        "message": f"Page '{page_title}' does not exist on {language}.wikipedia.org",
-                        "suggestions": "Try checking the spelling or using the search tool first"
-                    }
-                
-                # Get page information
-                page_info = api.get_page_info(page_title) if include_page_info else None
-                summary = api.get_page_summary(page_title)
-                extract = api.get_page_extract(page_title, sentences=5)
-                links = api.get_page_links(page_title, limit=50)
-                categories = api.get_page_categories(page_title) if include_categories else None
-                
-                # Construct the response
-                result = {
-                    "success": True,
-                    "page_title": page_title,
-                    "language": language,
-                    "url": f"https://{language}.wikipedia.org/wiki/{page_title.replace(' ', '_')}",
-                    "summary": {
-                        "extract": summary.get('extract', '') if summary else '',
-                        "description": summary.get('description', '') if summary else '',
-                        "type": summary.get('type', '') if summary else ''
-                    },
-                    "content_extract": extract or "No extract available",
-                    "hyperlinked_words": links or []
-                }
-                
-                # Optionally include categories
-                if include_categories:
-                    result["categories"] = categories or []
-                
-                # Optionally include page info
-                if include_page_info:
-                    result["page_info"] = {
-                        "length": page_info.get('length', 0) if page_info else 0,
-                        "last_modified": page_info.get('touched', '') if page_info else '',
-                        "page_id": page_info.get('pageid', '') if page_info else '',
-                        "canonical_url": page_info.get('canonicalurl', '') if page_info else ''
-                    }
-                
-                # Optionally include full content
-                if include_full_content:
-                    full_content = api.get_page_content(page_title)
-                    result["full_content"] = full_content or "Full content not available"
-                
-                return result
-                
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "message": f"Error retrieving information for page '{page_title}': {str(e)}"
-            }
-    
-    @mcp_server.tool(
         name="get_wikipedia_page_summary",
         description="Get a quick summary of a Wikipedia page - lighter version of get_wikipedia_page_info"
     )
@@ -185,7 +116,18 @@ def register_wikipedia_tools(mcp_server):
             sentences: Number of sentences to include in extract (default: 3)
             
         Returns:
-            Dict containing page summary and basic information
+            Dict containing:
+            - success: Boolean indicating if the request was successful
+            - page_title: The requested page title
+            - language: Language code used
+            - url: Direct link to the Wikipedia page
+            - summary: Brief summary text from page summary
+            - extract: Content extract with specified number of sentences
+            - description: Short page description
+            Or if unsuccessful:
+            - success: False
+            - error: Error details
+            - message: Human-readable error message
         """
         try:
             with WikipediaAPI(language=language) as api:
@@ -198,16 +140,29 @@ def register_wikipedia_tools(mcp_server):
                 
                 # Get basic information
                 summary = api.get_page_summary(page_title)
-                extract = api.get_page_extract(page_title, sentences=sentences)
+                
+                if not summary:
+                    return {
+                        "success": False,
+                        "message": f"Could not retrieve summary for page '{page_title}'"
+                    }
+                
+                # Extract the content and limit to requested sentences
+                extract = summary.get('extract', '')
+                if extract and sentences > 0:
+                    # Simple sentence splitting - split by periods and take first N sentences
+                    sentences_list = [s.strip() + '.' for s in extract.split('.') if s.strip()]
+                    if len(sentences_list) > sentences:
+                        extract = ' '.join(sentences_list[:sentences])
                 
                 return {
                     "success": True,
                     "page_title": page_title,
                     "language": language,
                     "url": f"https://{language}.wikipedia.org/wiki/{page_title.replace(' ', '_')}",
-                    "summary": summary.get('extract', '') if summary else '',
-                    "extract": extract or "No extract available",
-                    "description": summary.get('description', '') if summary else ''
+                    "summary": summary.get('extract', ''),
+                    "extract": extract,
+                    "description": summary.get('description', '')
                 }
                 
         except Exception as e:
@@ -218,39 +173,220 @@ def register_wikipedia_tools(mcp_server):
             }
     
     @mcp_server.tool(
-        name="check_wikipedia_page_exists",
-        description="Check if a Wikipedia page exists before trying to retrieve it"
+        name="get_wikipedia_page_sections",
+        description="Get a list of the sections on a Wikipedia Page. Its useful for when a page on wikipedia is too large and the LLM can query for the available sections to it to get only necessary information"
     )
-    def check_wikipedia_page_exists(
+    def get_wikipedia_page_sections(
         page_title: str,
         language: str = "en"
     ) -> dict[str, object]:
         """
-        Check if a Wikipedia page exists.
+        Get a list of sections from a Wikipedia page.
         
         Args:
-            page_title: The title of the Wikipedia page to check
+            page_title: The title of the Wikipedia page
             language: Wikipedia language code (default: "en")
             
         Returns:
-            Dict indicating whether the page exists
+            Dict containing:
+            - success: Boolean indicating if the request was successful
+            - page_title: The requested page title
+            - language: Language code used
+            - url: Direct link to the Wikipedia page
+            - sections: List of dictionaries, each containing:
+                - index: Section index
+                - title: Section title
+                - level: Section level (1, 2, 3, etc.)
+                - anchor: Section anchor for direct linking
+                - number: Section number
+            Or if unsuccessful:
+            - success: False
+            - error: Error details
+            - message: Human-readable error message
         """
         try:
             with WikipediaAPI(language=language) as api:
-                exists = api.page_exists(page_title)
+                # Check if page exists
+                if not api.page_exists(page_title):
+                    return {
+                        "success": False,
+                        "message": f"Page '{page_title}' does not exist"
+                    }
                 
+                # Get page sections
+                sections = api.get_page_sections(page_title)
+                
+                return {
+                    "success": True,
+                    "page_title": page_title,
+                    "language": language,
+                    "url": f"https://{language}.wikipedia.org/wiki/{page_title.replace(' ', '_')}",
+                    "sections": sections
+                }
+                
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "message": f"Error getting sections for '{page_title}': {str(e)}"
+            }
+    
+    @mcp_server.tool(
+        name="get_wikipedia_page_sections_info",
+        description="Get detailed sections information about a specific Wikipedia page"
+    )
+    def get_wikipedia_page_sections_info(
+        page_title: str,
+        section_titles: list[str] = None,
+        section_indices: list[str] = None,
+        language: str = "en"
+    ) -> dict[str, object]:
+        """
+        Get detailed content for specific sections of a Wikipedia page.
+        
+        Args:
+            page_title: The title of the Wikipedia page
+            section_titles: List of section titles to retrieve (optional)
+            section_indices: List of section indices to retrieve (optional)
+            language: Wikipedia language code (default: "en")
+            
+        Returns:
+            Dict containing:
+            - success: Boolean indicating if the request was successful
+            - page_title: The requested page title
+            - language: Language code used
+            - url: Direct link to the Wikipedia page
+            - sections_content: Dictionary mapping section identifiers to their content
+            Or if unsuccessful:
+            - success: False
+            - error: Error details
+            - message: Human-readable error message
+        """
+        try:
+            with WikipediaAPI(language=language) as api:
+                # Check if page exists
+                if not api.page_exists(page_title):
+                    return {
+                        "success": False,
+                        "message": f"Page '{page_title}' does not exist"
+                    }
+                
+                sections_content = {}
+                
+                # Get content by section titles if provided
+                if section_titles:
+                    sections_content.update(api.get_page_sections_content_by_title(page_title, section_titles))
+                
+                # Get content by section indices if provided
+                if section_indices:
+                    content_by_index = api.get_page_sections_content(page_title, section_indices)
+                    sections_content.update(content_by_index)
+                
+                # If neither titles nor indices provided, get all sections
+                if not section_titles and not section_indices:
+                    all_sections = api.get_page_sections(page_title)
+                    if all_sections:
+                        indices = [section['index'] for section in all_sections if section.get('index')]
+                        sections_content = api.get_page_sections_content(page_title, indices)
+                
+                return {
+                    "success": True,
+                    "page_title": page_title,
+                    "language": language,
+                    "url": f"https://{language}.wikipedia.org/wiki/{page_title.replace(' ', '_')}",
+                    "sections_content": sections_content
+                }
+                
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "message": f"Error getting section content for '{page_title}': {str(e)}"
+            }
+    
+    
+    @mcp_server.tool(
+        name="get_wikipedia_page_info",
+        description="Get detailed information about a specific Wikipedia page including content, summary, and hyperlinked words"
+    )
+    def get_wikipedia_page_info(
+        page_title: str,
+        language: str = "en",
+        include_full_content: bool = False
+    ) -> dict[str, object]:
+        """
+        Get comprehensive information about a Wikipedia page.
+        
+        Args:
+            page_title: The title of the Wikipedia page
+            language: Wikipedia language code (default: "en")
+            include_full_content: Whether to include full wikitext content (default: False)
+            
+        Returns:
+            Dict containing:
+            - success: Boolean indicating if the request was successful
+            - page_title: The requested page title
+            - language: Language code used
+            - url: Direct link to the Wikipedia page
+            - summary: Dictionary with:
+                - extract: Brief summary text
+                - description: Short description
+                - type: Page type (e.g., "standard", "disambiguation")
+            - hyperlinked_words: List of linked page titles from the page
+            - categories: List of page categories
+            - page_info: Dictionary with technical details:
+                - length: Page length in bytes
+                - last_modified: Last modification timestamp
+                - page_id: Unique page identifier
+                - canonical_url: Canonical URL
+            - full_content: Complete wikitext content (if include_full_content=True)
+            Or if unsuccessful:
+            - success: False
+            - error: Error details
+            - message: Human-readable error message
+            - suggestions: Helpful suggestions for troubleshooting
+        """
+        try:
+            with WikipediaAPI(language=language) as api:
+                # Check if page exists first
+                if not api.page_exists(page_title):
+                    return {
+                        "success": False,
+                        "message": f"Page '{page_title}' does not exist on {language}.wikipedia.org",
+                        "suggestions": "Try checking the spelling or using the search tool first"
+                    }
+                
+                # Get page information
+                page_info = api.get_page_info(page_title)
+                summary = api.get_page_summary(page_title)
+                links = api.get_page_links(page_title, limit=50)
+                categories = api.get_page_categories(page_title)
+                
+                # Construct the response
                 result = {
                     "success": True,
                     "page_title": page_title,
                     "language": language,
-                    "exists": exists
+                    "url": f"https://{language}.wikipedia.org/wiki/{page_title.replace(' ', '_')}",
+                    "summary": {
+                        "extract": summary.get('extract', '') if summary else '',
+                        "description": summary.get('description', '') if summary else '',
+                        "type": summary.get('type', '') if summary else ''
+                    },
+                    "hyperlinked_words": links or [],
+                    "categories": categories or [],
+                    "page_info": {
+                        "length": page_info.get('length', 0) if page_info else 0,
+                        "last_modified": page_info.get('touched', '') if page_info else '',
+                        "page_id": page_info.get('pageid', '') if page_info else '',
+                        "canonical_url": page_info.get('canonicalurl', '') if page_info else ''
+                    }
                 }
                 
-                if exists:
-                    result["url"] = f"https://{language}.wikipedia.org/wiki/{page_title.replace(' ', '_')}"
-                    result["message"] = f"Page '{page_title}' exists"
-                else:
-                    result["message"] = f"Page '{page_title}' does not exist"
+                # Optionally include full content
+                if include_full_content:
+                    full_content = api.get_page_content(page_title)
+                    result["full_content"] = full_content or "Full content not available"
                 
                 return result
                 
@@ -258,7 +394,7 @@ def register_wikipedia_tools(mcp_server):
             return {
                 "success": False,
                 "error": str(e),
-                "message": f"Error checking if page '{page_title}' exists: {str(e)}"
+                "message": f"Error retrieving information for page '{page_title}': {str(e)}"
             }
 
 
@@ -281,40 +417,6 @@ WIKIPEDIA_TOOLS = [
                 }
             },
             "required": ["query"]
-        }
-    },
-    {
-        "name": "get_wikipedia_page_info",
-        "description": "Get detailed information about a specific Wikipedia page including content, summary, and hyperlinked words",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "page_title": {
-                    "type": "string",
-                    "description": "The title of the Wikipedia page"
-                },
-                "language": {
-                    "type": "string",
-                    "description": "Wikipedia language code (default: 'en')",
-                    "default": "en"
-                },
-                "include_full_content": {
-                    "type": "boolean",
-                    "description": "Whether to include full wikitext content (default: false). Only use if you specifically need the raw wiki markup.",
-                    "default": False
-                },
-                "include_categories": {
-                    "type": "boolean",
-                    "description": "Whether to include page categories (default: false). Only use if you specifically need category information for classification or organization purposes.",
-                    "default": False
-                },
-                "include_page_info": {
-                    "type": "boolean",
-                    "description": "Whether to include detailed page metadata like length, last modified date, and page ID (default: false). Only use if you specifically need technical page details.",
-                    "default": False
-                }
-            },
-            "required": ["page_title"]
         }
     },
     {
@@ -342,19 +444,76 @@ WIKIPEDIA_TOOLS = [
         }
     },
     {
-        "name": "check_wikipedia_page_exists",
-        "description": "Check if a Wikipedia page exists before trying to retrieve it",
+        "name": "get_wikipedia_page_sections",
+        "description": "Get a list of the sections on a Wikipedia Page. Its useful for when a page on wikipedia is too large and the LLM can query for the available sections to it to get only necessary information",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "page_title": {
                     "type": "string",
-                    "description": "The title of the Wikipedia page to check"
+                    "description": "The title of the Wikipedia page"
                 },
                 "language": {
                     "type": "string",
                     "description": "Wikipedia language code (default: 'en')",
                     "default": "en"
+                }
+            },
+            "required": ["page_title"]
+        }
+    },
+    {
+        "name": "get_wikipedia_page_sections_info",
+        "description": "Get detailed sections information about a specific Wikipedia page",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "page_title": {
+                    "type": "string",
+                    "description": "The title of the Wikipedia page"
+                },
+                "section_titles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of section titles to retrieve content for (optional)"
+                },
+                "section_indices": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of section indices to retrieve content for (optional)"
+                },
+                "language": {
+                    "type": "string",
+                    "description": "Wikipedia language code (default: 'en')",
+                    "default": "en"
+                }
+            },
+            "required": ["page_title"]
+        }
+    },
+    {
+        "name": "get_wikipedia_page_info",
+        "description": "Get detailed information about a specific Wikipedia page including content, summary, and hyperlinked words",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "page_title": {
+                    "type": "string",
+                    "description": "The title of the Wikipedia page"
+                },
+                "language": {
+                    "type": "string",
+                    "description": "Wikipedia language code (default: 'en')",
+                    "default": "en"
+                },
+                "include_full_content": {
+                    "type": "boolean",
+                    "description": "Whether to include full wikitext content (default: false). Only use if you specifically need the raw wiki markup.",
+                    "default": False
                 }
             },
             "required": ["page_title"]
