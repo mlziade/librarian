@@ -125,25 +125,21 @@ class WikipediaAPI:
             print(f"Error getting page content for '{title}': {e}")
             return None
     
-    def get_page_extract(self, title: str, sentences: int = 3) -> Optional[str]:
+    def get_page_sections(self, title: str) -> List[Dict[str, Any]]:
         """
-        Get a plain text extract of a Wikipedia page.
+        Get the table of contents (section structure) of a Wikipedia page.
         
         Args:
             title (str): Page title
-            sentences (int): Number of sentences to extract
             
         Returns:
-            Optional[str]: Plain text extract
+            List[Dict]: List of sections with index, title, level, and anchor
         """
         params = {
-            'action': 'query',
+            'action': 'parse',
             'format': 'json',
-            'titles': title,
-            'prop': 'extracts',
-            'exsentences': sentences,
-            'explaintext': True,
-            'exsectionformat': 'plain'
+            'page': title,
+            'prop': 'sections'
         }
         
         try:
@@ -151,14 +147,99 @@ class WikipediaAPI:
             response.raise_for_status()
             data = response.json()
             
-            pages = data.get('query', {}).get('pages', {})
-            for page_id, page_data in pages.items():
-                if page_id != '-1':  # Page exists
-                    return page_data.get('extract', '')
-            return None
+            if 'parse' in data and 'sections' in data['parse']:
+                sections = data['parse']['sections']
+                # Format sections for easier use
+                formatted_sections = []
+                for section in sections:
+                    formatted_sections.append({
+                        'index': section.get('index', ''),
+                        'title': section.get('line', ''),
+                        'level': int(section.get('level', 1)),
+                        'anchor': section.get('anchor', ''),
+                        'number': section.get('number', '')
+                    })
+                return formatted_sections
+            return []
         except httpx.RequestError as e:
-            print(f"Error getting page extract for '{title}': {e}")
-            return None
+            print(f"Error getting page sections for '{title}': {e}")
+            return []
+    
+    def get_page_sections_content(self, title: str, section_indices: List[str]) -> Dict[str, str]:
+        """
+        Get the content of specific sections from a Wikipedia page.
+        
+        Args:
+            title (str): Page title
+            section_indices (List[str]): List of section indices to retrieve
+            
+        Returns:
+            Dict[str, str]: Dictionary mapping section indices to their content
+        """
+        result = {}
+        
+        for section_index in section_indices:
+            params = {
+                'action': 'parse',
+                'format': 'json',
+                'page': title,
+                'section': section_index,
+                'prop': 'wikitext'
+            }
+            
+            try:
+                response = self.client.get(self.api_url, params=params)
+                response.raise_for_status()
+                data = response.json()
+                
+                if 'parse' in data and 'wikitext' in data['parse']:
+                    wikitext = data['parse']['wikitext']['*']
+                    result[section_index] = wikitext
+                else:
+                    result[section_index] = None
+            except httpx.RequestError as e:
+                print(f"Error getting section {section_index} for '{title}': {e}")
+                result[section_index] = None
+        
+        return result
+    
+    def get_page_sections_content_by_title(self, title: str, section_titles: List[str]) -> Dict[str, str]:
+        """
+        Get the content of specific sections from a Wikipedia page by section titles.
+        
+        Args:
+            title (str): Page title
+            section_titles (List[str]): List of section titles to retrieve
+            
+        Returns:
+            Dict[str, str]: Dictionary mapping section titles to their content
+        """
+        # First get all sections to find the indices
+        sections = self.get_page_sections(title)
+        if not sections:
+            return {}
+        
+        # Create a mapping of section titles to indices
+        title_to_index = {}
+        for section in sections:
+            section_title = section['title'].strip()
+            for target_title in section_titles:
+                if section_title.lower() == target_title.lower():
+                    title_to_index[target_title] = section['index']
+        
+        # Get content for found sections
+        if not title_to_index:
+            return {}
+        
+        indices = list(title_to_index.values())
+        content_by_index = self.get_page_sections_content(title, indices)
+        
+        # Map back to section titles
+        result = {}
+        for section_title, section_index in title_to_index.items():
+            result[section_title] = content_by_index.get(section_index)
+        
+        return result
     
     def get_page_categories(self, title: str) -> List[str]:
         """
@@ -349,43 +430,5 @@ class WikipediaAPI:
             return None
 
 
-# Convenience functions for quick access
-def search_wikipedia(query: str, language: str = "en", limit: int = 10) -> List[Dict[str, Any]]:
-    """Quick search function."""
-    api = WikipediaAPI(language)
-    return api.search(query, limit)
-
-
-def get_wikipedia_summary(title: str, language: str = "en") -> Optional[Dict[str, Any]]:
-    """Quick summary function."""
-    api = WikipediaAPI(language)
-    return api.get_page_summary(title)
-
-
-def get_wikipedia_extract(title: str, language: str = "en", sentences: int = 3) -> Optional[str]:
-    """Quick extract function."""
-    api = WikipediaAPI(language)
-    return api.get_page_extract(title, sentences)
-
-
 if __name__ == "__main__":
-    # Example usage - Synchronous API
-    print("=== Synchronous API Examples ===")
-    
-    # Using context manager (recommended)
-    with WikipediaAPI() as api:
-        # Search for articles
-        results = api.search("Python programming", limit=5)
-        print("Search results:")
-        for result in results:
-            print(f"- {result['title']}")
-        
-        # Get a page summary
-        summary = api.get_page_summary("Python (programming language)")
-        if summary:
-            print(f"\nSummary: {summary.get('extract', '')[:200]}...")
-        
-        # Get page extract
-        extract = api.get_page_extract("Python (programming language)", sentences=2)
-        if extract:
-            print(f"\nExtract: {extract}")
+    pass
