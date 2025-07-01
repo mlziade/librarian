@@ -340,35 +340,6 @@ class WikipediaAPI:
             print(f"Error getting images for '{title}': {e}")
             return []
     
-    def get_random_pages(self, count: int = 1) -> list[str]:
-        """
-        Get random Wikipedia page titles.
-        
-        Args:
-            count (int): Number of random pages to retrieve
-            
-        Returns:
-            list[str]: List of random page titles
-        """
-        params = {
-            'action': 'query',
-            'format': 'json',
-            'list': 'random',
-            'rnlimit': count,
-            'rnnamespace': 0  # Main namespace only
-        }
-        
-        try:
-            response = self.client.get(self.api_url, params=params)
-            response.raise_for_status()
-            data = response.json()
-            
-            random_pages = data.get('query', {}).get('random', [])
-            return [page['title'] for page in random_pages]
-        except httpx.RequestError as e:
-            print(f"Error getting random pages: {e}")
-            return []
-    
     def page_exists(self, title: str) -> bool:
         """
         Check if a Wikipedia page exists.
