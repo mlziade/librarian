@@ -1,6 +1,6 @@
 # librarian
 
-Librarian is a MCP (Model Context Protocol) Server that allows Claude Desktop to query Wikipedia for information. It can be configured to automatically fact-check information without requiring explicit user requests.
+Librarian is a MCP (Model Context Protocol) Server that allows any LLM with a compatible MCP client to query Wikipedia for information. It can be configured to automatically fact-check information without requiring explicit user requests.
 
 > *"The only thing that you absolutely have to know is the location of the library."*
 > 
