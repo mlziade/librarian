@@ -3,60 +3,31 @@ Wikipedia API Module
 
 This module provides common methods for interacting with Wikipedia using the MediaWiki API.
 It includes functions for searching, retrieving page content, getting summaries, and more.
-Now includes rate limiting using Token Bucket Algorithm.
 """
 
 import httpx
 from urllib.parse import quote_plus
-import sys
-import os
-
-# Add the parent directory to the path to import our rate limiter
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from utils.rate_limiter import (
-    TokenBucketRateLimiter,
-    RateLimitedHTTPClient,
-    create_rate_limiter_from_env,
-    RateLimitException
-)
 
 
 class WikipediaAPI:
-    """A class to interact with Wikipedia's MediaWiki API with built-in rate limiting."""
+    """A class to interact with Wikipedia's MediaWiki API."""
     
-    def __init__(self, language: str = "en", enable_rate_limiting: bool = True):
+    def __init__(self, language: str = "en"):
         """
         Initialize the Wikipedia API client.
         
         Args:
             language (str): Language code for Wikipedia (e.g., 'en', 'es', 'fr')
-            enable_rate_limiting (bool): Whether to enable rate limiting (default: True)
         """
         self.language = language
         self.base_url = f"https://{language}.wikipedia.org/api/rest_v1"
         self.api_url = f"https://{language}.wikipedia.org/w/api.php"
         
-        # Initialize HTTP client with or without rate limiting
-        if enable_rate_limiting:
-            # Create rate limiter from environment configuration
-            rate_limiter = create_rate_limiter_from_env()
-            
-            # Create base HTTP client
-            base_client = httpx.Client()
-            base_client.headers.update({
-                'User-Agent': 'Librarian/1.0 (https://github.com/user/librarian)'
-            })
-            
-            # Wrap with rate limiting
-            self.client = RateLimitedHTTPClient(rate_limiter, base_client)
-            self.rate_limited = True
-        else:
-            self.client = httpx.Client()
-            self.client.headers.update({
-                'User-Agent': 'Librarian/1.0 (https://github.com/user/librarian)'
-            })
-            self.rate_limited = False
+        # Initialize HTTP client
+        self.client = httpx.Client()
+        self.client.headers.update({
+            'User-Agent': 'Librarian/1.0 (https://github.com/user/librarian)'
+        })
     
     def __enter__(self):
         """Context manager entry."""
@@ -72,7 +43,7 @@ class WikipediaAPI:
     
     def search(self, query: str, limit: int = 10) -> list[dict[str, any]]:
         """
-        Search for Wikipedia articles with rate limiting.
+        Search for Wikipedia articles.
         
         Args:
             query (str): Search query
@@ -95,16 +66,13 @@ class WikipediaAPI:
             response.raise_for_status()
             data = response.json()
             return data.get('query', {}).get('search', [])
-        except RateLimitException as e:
-            print(f"Rate limit exceeded for Wikipedia search: {e}")
-            return []
         except httpx.RequestError as e:
             print(f"Error searching Wikipedia: {e}")
             return []
     
     def get_page_summary(self, title: str) -> dict[str, any] | None:
         """
-        Get a summary of a Wikipedia page with rate limiting.
+        Get a summary of a Wikipedia page.
         
         Args:
             title (str): Page title
@@ -119,9 +87,6 @@ class WikipediaAPI:
             response = self.client.get(url)
             response.raise_for_status()
             return response.json()
-        except RateLimitException as e:
-            print(f"Rate limit exceeded for Wikipedia page summary '{title}': {e}")
-            return None
         except httpx.RequestError as e:
             print(f"Error getting page summary for '{title}': {e}")
             return None
