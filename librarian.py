@@ -20,5 +20,9 @@ NWS_API_BASE = "https://librarian.mlziade.com.br"
 USER_AGENT = "librarian-app/1.0"
 
 if __name__ == "__main__":
+    print("🚀 Starting Librarian MCP Server...")
+    print("📚 Wikipedia tools and resources loaded")
+    print("✅ Server is ready and listening for connections")
+    
     # Run the MCP server
     mcp.run()
