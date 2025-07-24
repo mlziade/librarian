@@ -2,6 +2,9 @@
 
 Librarian is a MCP (Model Context Protocol) Server that allows any LLM with a compatible MCP client to query Wikipedia for information. It can be configured to automatically fact-check information without requiring explicit user requests.
 
+**Note:** While this guide focuses on Claude Desktop setup, Librarian also supports remote hosting via WebSocket/HTTP for broader accessibility.
+
+
 > *"The only thing that you absolutely have to know is the location of the library."*
 > 
 > — Albert Einstein
@@ -23,17 +26,17 @@ Librarian is a MCP (Model Context Protocol) Server that allows any LLM with a co
 - **Page Sections**: Get specific sections from Wikipedia pages
 - **Multi-language Support**: Query Wikipedia in different languages
 
-## Installation for Claude Desktop
+## Installation
 
-This MCP server is designed to work with Claude Desktop. Follow these steps to set it up:
+### Claude Desktop Setup
 
-### 1. Prerequisites
+#### 1. Prerequisites
 
 - [Claude Desktop](https://claude.ai/download) installed on your computer
 - [uv](https://docs.astral.sh/uv/) package manager installed
 - Python 3.13 or higher
 
-### 2. Clone and Set Up the Project
+#### 2. Clone and Set Up the Project
 
 ```bash
 git clone <your-repository-url>
@@ -41,7 +44,7 @@ cd librarian
 uv sync
 ```
 
-### 3. Configure Claude Desktop
+#### 3. Configure Claude Desktop
 
 Add this configuration to your Claude Desktop configuration file:
 
@@ -49,26 +52,65 @@ Add this configuration to your Claude Desktop configuration file:
 **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 **Linux**: `~/.config/Claude/claude_desktop_config.json`
 
+**For Windows:**
 ```json
 {
     "mcpServers": {
         "librarian": {
-            "command": "uv",
-            "args": ["run", "python", "librarian.py"],
-            "cwd": "C:\\Users\\YourUsername\\Documents\\librarian",
+            "command": "C:\\Users\\[USERNAME]\\.local\\bin\\uv.exe",
+            "args": ["--directory", "C:\\Users\\[USERNAME]\\path\\to\\librarian", "run", "python", "librarian_stdio.py"],
             "env": {
-                "PYTHONPATH": "C:\\Users\\YourUsername\\Documents\\librarian"
+                "PYTHONPATH": "C:\\Users\\[USERNAME]\\path\\to\\librarian"
             }
         }
     }
 }
 ```
 
-**Important**: Replace `C:\\Users\\YourUsername\\Documents\\librarian` with the actual path where you cloned the repository.
+**For macOS/Linux:**
+```json
+{
+    "mcpServers": {
+        "librarian": {
+            "command": "uv",
+            "args": ["--directory", "/path/to/your/librarian", "run", "python", "librarian_stdio.py"],
+            "env": {
+                "PYTHONPATH": "/path/to/your/librarian"
+            }
+        }
+    }
+}
+```
 
-### 4. Restart Claude Desktop
+**Important**: 
+- Replace `[USERNAME]` and `/path/to/your/librarian` with your actual paths
+- The `--directory` flag ensures uv uses the correct project environment
+- Use the full path to `uv.exe` on Windows for reliability
+
+#### 4. Restart Claude Desktop
 
 After adding the configuration, restart Claude Desktop completely to load the MCP server.
+
+#### 5. Troubleshooting
+
+If you encounter issues:
+
+1. **Check Claude Desktop logs**: 
+   - **Windows**: `%AppData%\Claude\logs\mcp-server-librarian.log`
+   - **macOS**: `~/Library/Logs/Claude/mcp-server-librarian.log`
+
+2. **Common issues**:
+   - `ModuleNotFoundError`: Ensure you're using the `--directory` flag and correct paths
+   - `File not found`: Use absolute paths for both `command` and in `args`
+   - `Virtual environment warnings`: These are harmless but can be avoided with proper paths
+
+3. **Test manually**:
+   ```bash
+   cd /path/to/librarian
+   uv run python librarian_stdio.py
+   # Should start without errors
+   ```
+
 
 ## Automatic Fact-Checking Setup
 

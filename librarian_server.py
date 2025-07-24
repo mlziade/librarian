@@ -1,16 +1,18 @@
 """
 Remote MCP Server for Librarian
 
-This module creates a server that can host the MCP server over HTTP/WebSocket
+This module creates a server that can host the MCP server over HTTP/WebSocket/STDIO
 for remote access while maintaining MCP protocol compliance.
 """
 
 import asyncio
 import json
 import logging
-from typing import Any, Dict
-from fastapi import FastAPI, WebSocket, HTTPException
-from fastapi.responses import HTMLResponse
+import sys
+import os
+from typing import Any, Dict, Optional
+from fastapi import FastAPI, WebSocket, HTTPException, Request
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -105,19 +107,41 @@ async def root():
                 <strong>MCP WebSocket Endpoint:</strong><br>
                 wss://librarian.mlziade.com.br/mcp
             </div>
-            
+            <div class="endpoint">
+                <strong>MCP HTTP+SSE Endpoint:</strong><br>
+                https://librarian.mlziade.com.br/sse
+            </div>
             
             <h2>Client Configuration</h2>
-            <p>For Claude Desktop, add this to your MCP configuration:</p>
+            <p>For Claude Desktop (local STDIO), add this to your MCP configuration:</p>
             <div class="endpoint">
 {
   "mcpServers": {
     "librarian": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-fetch", "wss://librarian.mlziade.com.br/mcp"]
+      "command": "python",
+      "args": ["/path/to/librarian_stdio.py"]
     }
   }
 }
+            </div>
+            
+            <p>For remote STDIO (if server supports it), use:</p>
+            <div class="endpoint">
+{
+  "mcpServers": {
+    "librarian": {
+      "command": "python",
+      "args": ["/path/to/librarian_server.py", "--stdio"]
+    }
+  }
+}
+            </div>
+            
+            <p>For HTTP+POST testing:</p>
+            <div class="endpoint">
+curl -X POST https://librarian.mlziade.com.br/mcp \\
+  -H "Content-Type: application/json" \\
+  -d '{"method":"initialize","params":{"protocol":"mcp"}}'
             </div>
         </div>
     </body>
@@ -190,11 +214,105 @@ async def mcp_websocket(websocket: WebSocket):
         session.closed = True
         logger.info("MCP WebSocket connection closed")
 
-# For running with uvicorn
-if __name__ == "__main__":
-    uvicorn.run(
-        "librarian_server:app",
-        host="0.0.0.0",
-        port=8000,
-        log_level="info"
+
+class MCPHttpSession:
+    """Handles MCP protocol over HTTP+SSE."""
+    
+    def __init__(self):
+        self.session = ServerSession(mcp)
+        self.message_queue = asyncio.Queue()
+        self.closed = False
+    
+    async def handle_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Handle incoming MCP message and return response."""
+        try:
+            logger.info(f"Received HTTP MCP message: {message}")
+            
+            # Process through MCP session
+            response = await self.session.handle_message(message)
+            logger.info(f"Sending MCP response: {response}")
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error handling MCP message: {e}")
+            return {
+                "jsonrpc": "2.0",
+                "id": message.get("id"),
+                "error": {
+                    "code": -32603,
+                    "message": f"Internal error: {str(e)}"
+                }
+            }
+
+
+@app.post("/mcp")
+async def mcp_http(request: Request):
+    """HTTP endpoint for MCP protocol communication."""
+    try:
+        data = await request.json()
+        session = MCPHttpSession()
+        response = await session.handle_message(data)
+        return response if response else {}
+        
+    except Exception as e:
+        logger.error(f"HTTP MCP error: {e}")
+        return {
+            "jsonrpc": "2.0",
+            "id": None,
+            "error": {
+                "code": -32603,
+                "message": f"Internal error: {str(e)}"
+            }
+        }
+
+
+async def sse_generator():
+    """Generate Server-Sent Events for MCP communication."""
+    session = MCPHttpSession()
+    
+    # Send initial connection event
+    yield f"data: {json.dumps({'type': 'connected', 'message': 'MCP HTTP transport ready'})}\n\n"
+    
+    try:
+        while not session.closed:
+            # Keep connection alive
+            yield f"data: {json.dumps({'type': 'ping', 'timestamp': asyncio.get_event_loop().time()})}\n\n"
+            await asyncio.sleep(30)  # Send ping every 30 seconds
+            
+    except Exception as e:
+        logger.error(f"SSE error: {e}")
+        yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+
+@app.get("/sse")
+async def mcp_sse():
+    """Server-Sent Events endpoint for MCP protocol communication."""
+    return StreamingResponse(
+        sse_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Cache-Control"
+        }
     )
+
+# For running with uvicorn or stdio
+if __name__ == "__main__":
+    # Check if we should run in STDIO mode (for local MCP clients like Claude Desktop)
+    if len(sys.argv) > 1 and sys.argv[1] == "--stdio":
+        print("🚀 Starting Librarian MCP Server in STDIO mode...", file=sys.stderr)
+        print("📚 Wikipedia tools and resources loaded", file=sys.stderr)
+        print("✅ Server is ready and listening for connections", file=sys.stderr)
+        
+        # Run the MCP server using stdio transport
+        mcp.run(transport='stdio')
+    else:
+        # Run as HTTP/WebSocket server
+        uvicorn.run(
+            "librarian_server:app",
+            host="0.0.0.0",
+            port=8000,
+            log_level="info"
+        )
