@@ -15,14 +15,10 @@ register_wikipedia_tools(mcp)
 register_wikipedia_resources(mcp)
 register_prompt_resources(mcp)
 
-# Constants
-NWS_API_BASE = "https://librarian.mlziade.com.br"
-USER_AGENT = "librarian-app/1.0"
-
 if __name__ == "__main__":
     print("🚀 Starting Librarian MCP Server...")
     print("📚 Wikipedia tools and resources loaded")
     print("✅ Server is ready and listening for connections")
     
-    # Run the MCP server
-    mcp.run()
+    # Run the MCP server using stdio transport (standard for MCP)
+    mcp.run(transport='stdio')
