@@ -7,6 +7,9 @@ It includes functions for searching, retrieving page content, getting summaries,
 
 import httpx
 from urllib.parse import quote_plus
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 class WikipediaAPI:
@@ -67,7 +70,7 @@ class WikipediaAPI:
             data = response.json()
             return data.get('query', {}).get('search', [])
         except httpx.RequestError as e:
-            print(f"Error searching Wikipedia: {e}")
+            logger.error(f"Error searching Wikipedia: {e}")
             return []
     
     def get_page_summary(self, title: str) -> dict[str, any] | None:
@@ -88,7 +91,7 @@ class WikipediaAPI:
             response.raise_for_status()
             return response.json()
         except httpx.RequestError as e:
-            print(f"Error getting page summary for '{title}': {e}")
+            logger.error(f"Error getting page summary for '{title}': {e}")
             return None
     
     def get_page_content(self, title: str) -> str | None:
@@ -123,7 +126,7 @@ class WikipediaAPI:
                         return revisions[0]['slots']['main']['*']
             return None
         except httpx.RequestError as e:
-            print(f"Error getting page content for '{title}': {e}")
+            logger.error(f"Error getting page content for '{title}': {e}")
             return None
     
     def get_page_sections(self, title: str) -> list[dict[str, any]]:
@@ -163,7 +166,7 @@ class WikipediaAPI:
                 return formatted_sections
             return []
         except httpx.RequestError as e:
-            print(f"Error getting page sections for '{title}': {e}")
+            logger.error(f"Error getting page sections for '{title}': {e}")
             return []
     
     def get_page_sections_content(self, title: str, section_indices: list[str]) -> dict[str, str]:
@@ -199,7 +202,7 @@ class WikipediaAPI:
                 else:
                     result[section_index] = None
             except httpx.RequestError as e:
-                print(f"Error getting section {section_index} for '{title}': {e}")
+                logger.error(f"Error getting section {section_index} for '{title}': {e}")
                 result[section_index] = None
         
         return result
@@ -272,7 +275,7 @@ class WikipediaAPI:
                     return [cat['title'].replace('Category:', '') for cat in categories]
             return []
         except httpx.RequestError as e:
-            print(f"Error getting categories for '{title}': {e}")
+            logger.error(f"Error getting categories for '{title}': {e}")
             return []
     
     def get_page_links(self, title: str, limit: int = 100) -> list[str]:
@@ -307,7 +310,7 @@ class WikipediaAPI:
                     return [link['title'] for link in links]
             return []
         except httpx.RequestError as e:
-            print(f"Error getting links for '{title}': {e}")
+            logger.error(f"Error getting links for '{title}': {e}")
             return []
     
     def get_page_images(self, title: str) -> list[dict[str, str]]:
@@ -339,7 +342,7 @@ class WikipediaAPI:
                     return [{'title': img['title']} for img in images]
             return []
         except httpx.RequestError as e:
-            print(f"Error getting images for '{title}': {e}")
+            logger.error(f"Error getting images for '{title}': {e}")
             return []
     
     def page_exists(self, title: str) -> bool:
@@ -366,7 +369,7 @@ class WikipediaAPI:
             pages = data.get('query', {}).get('pages', {})
             return '-1' not in pages  # -1 indicates missing page
         except httpx.RequestError as e:
-            print(f"Error checking if page exists '{title}': {e}")
+            logger.error(f"Error checking if page exists '{title}': {e}")
             return False
     
     def get_page_info(self, title: str) -> dict[str, any] | None:
@@ -398,7 +401,7 @@ class WikipediaAPI:
                     return page_data
             return None
         except httpx.RequestError as e:
-            print(f"Error getting page info for '{title}': {e}")
+            logger.error(f"Error getting page info for '{title}': {e}")
             return None
 
 

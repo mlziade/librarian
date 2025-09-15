@@ -1,5 +1,9 @@
+from logging_config import get_logger
+
+logger = get_logger(__name__)
+
 def main():
-    print("Hello from librarian!")
+    logger.info("Hello from librarian!")
 
 
 if __name__ == "__main__":
