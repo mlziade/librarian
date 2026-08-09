@@ -405,5 +405,159 @@ class WikipediaAPI:
             return None
 
 
+    def get_pages_near_location(
+        self,
+        latitude: float,
+        longitude: float,
+        radius: int = 1000,
+        limit: int = 10
+    ) -> list[dict[str, any]]:
+        """
+        Search for Wikipedia articles near a geographic location.
+
+        Args:
+            latitude: Latitude of the center point
+            longitude: Longitude of the center point
+            radius: Search radius in metres (max 10000)
+            limit: Maximum number of results (max 500)
+
+        Returns:
+            list[dict]: Articles with title, distance, coordinates, and page ID
+        """
+        params = {
+            'action': 'query',
+            'format': 'json',
+            'list': 'geosearch',
+            'gscoord': f'{latitude}|{longitude}',
+            'gsradius': min(radius, 10000),
+            'gslimit': min(limit, 500),
+            'gsprop': 'type|name|dim|country|region|globe',
+        }
+
+        try:
+            response = self.client.get(self.api_url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            results = data.get('query', {}).get('geosearch', [])
+            return [
+                {
+                    'page_id': r.get('pageid'),
+                    'title': r.get('title'),
+                    'latitude': r.get('lat'),
+                    'longitude': r.get('lon'),
+                    'distance_metres': r.get('dist'),
+                    'type': r.get('type'),
+                    'country': r.get('country'),
+                    'region': r.get('region'),
+                }
+                for r in results
+            ]
+        except httpx.RequestError as e:
+            logger.error(f"Error searching near ({latitude}, {longitude}): {e}")
+            return []
+
+    def get_on_this_day(
+        self,
+        month: int,
+        day: int,
+        event_type: str = "events"
+    ) -> dict[str, any] | None:
+        """
+        Get historical events, births, or deaths for a given date.
+
+        Args:
+            month: Month number (1–12)
+            day: Day number (1–31)
+            event_type: One of "events", "births", "deaths", "holidays", "selected", "all"
+
+        Returns:
+            dict | None: Events grouped by the requested type
+        """
+        valid_types = {"events", "births", "deaths", "holidays", "selected", "all"}
+        if event_type not in valid_types:
+            event_type = "events"
+
+        url = f"{self.base_url}/feed/onthisday/{event_type}/{month:02d}/{day:02d}"
+
+        try:
+            response = self.client.get(url)
+            response.raise_for_status()
+            data = response.json()
+
+            def _format_entries(entries: list) -> list[dict]:
+                formatted = []
+                for entry in entries:
+                    pages = [
+                        {
+                            'title': p.get('title'),
+                            'description': p.get('description'),
+                            'url': p.get('content_urls', {}).get('desktop', {}).get('page'),
+                        }
+                        for p in entry.get('pages', [])
+                    ]
+                    formatted.append({
+                        'year': entry.get('year'),
+                        'text': entry.get('text'),
+                        'pages': pages,
+                    })
+                return formatted
+
+            result = {}
+            if event_type == "all":
+                for key in ("events", "births", "deaths", "holidays", "selected"):
+                    if key in data:
+                        result[key] = _format_entries(data[key])
+            else:
+                if event_type in data:
+                    result[event_type] = _format_entries(data[event_type])
+
+            return result
+        except httpx.RequestError as e:
+            logger.error(f"Error getting on-this-day for {month}/{day}: {e}")
+            return None
+
+    def get_page_images(self, title: str) -> list[dict[str, any]]:
+        """
+        Get all media items (images, audio, video) from a Wikipedia page.
+
+        Args:
+            title: Page title
+
+        Returns:
+            list[dict]: Media items with URL, caption, type, and dimensions
+        """
+        encoded_title = quote_plus(title.replace(' ', '_'))
+        url = f"{self.base_url}/page/media-list/{encoded_title}"
+
+        try:
+            response = self.client.get(url)
+            response.raise_for_status()
+            data = response.json()
+
+            items = []
+            for item in data.get('items', []):
+                media_type = item.get('type')
+                titles_obj = item.get('titles', {})
+                canonical = titles_obj.get('canonical', item.get('title', ''))
+
+                original = item.get('original', {})
+                image_url = original.get('source') or item.get('src')
+
+                items.append({
+                    'title': canonical,
+                    'type': media_type,
+                    'url': image_url,
+                    'mime': original.get('mime') or item.get('mime'),
+                    'width': original.get('width'),
+                    'height': original.get('height'),
+                    'caption': item.get('caption', {}).get('text') if isinstance(item.get('caption'), dict) else item.get('caption'),
+                    'description': item.get('description', {}).get('text') if isinstance(item.get('description'), dict) else None,
+                })
+            return items
+        except httpx.RequestError as e:
+            logger.error(f"Error getting images for '{title}': {e}")
+            return []
+
+
 if __name__ == "__main__":
     pass

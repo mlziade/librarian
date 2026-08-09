@@ -463,6 +463,41 @@ def register_wikipedia_resources(mcp_server):
                     "exsectionformat": "plain"
                 },
                 "example": "https://en.wikipedia.org/w/api.php?action=query&format=json&titles=Python&prop=extracts&exsentences=3&explaintext=true"
+            },
+            "geosearch_api": {
+                "url": "https://{lang}.wikipedia.org/w/api.php",
+                "method": "GET",
+                "description": "MediaWiki API for finding articles near a geographic coordinate",
+                "parameters": {
+                    "action": "query",
+                    "format": "json",
+                    "list": "geosearch",
+                    "gscoord": "latitude|longitude",
+                    "gsradius": "Search radius in metres (max 10000)",
+                    "gslimit": "Number of results (max 500)",
+                    "gsprop": "type|name|dim|country|region|globe"
+                },
+                "example": "https://en.wikipedia.org/w/api.php?action=query&format=json&list=geosearch&gscoord=48.8566|2.3522&gsradius=1000&gslimit=10"
+            },
+            "on_this_day_api": {
+                "url": "https://{lang}.wikipedia.org/api/rest_v1/feed/onthisday/{type}/{month}/{day}",
+                "method": "GET",
+                "description": "REST API for historical events, births, and deaths on a given date",
+                "parameters": {
+                    "type": "One of: all, selected, births, deaths, events, holidays",
+                    "month": "Two-digit month (01-12)",
+                    "day": "Two-digit day (01-31)"
+                },
+                "example": "https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/07/20"
+            },
+            "media_list_api": {
+                "url": "https://{lang}.wikipedia.org/api/rest_v1/page/media-list/{title}",
+                "method": "GET",
+                "description": "REST API for retrieving all media items (images, audio, video) on a page",
+                "parameters": {
+                    "title": "Page title (URL encoded)"
+                },
+                "example": "https://en.wikipedia.org/api/rest_v1/page/media-list/Python_(programming_language)"
             }
         }
         return json.dumps(endpoints, indent=2)

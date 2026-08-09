@@ -400,3 +400,163 @@ def register_wikipedia_tools(mcp_server):
                 "error": str(e),
                 "message": f"Error retrieving information for page '{page_title}': {str(e)}"
             }
+
+    @mcp_server.tool(
+        name="get_wikipedia_pages_near_location",
+        description="Find Wikipedia articles about places near a geographic coordinate (latitude/longitude)"
+    )
+    def get_wikipedia_pages_near_location(
+        latitude: float,
+        longitude: float,
+        radius: int = 1000,
+        limit: int = 10,
+        language: str = "en"
+    ) -> dict[str, object]:
+        """
+        Search for Wikipedia articles geographically near a given coordinate.
+
+        Args:
+            latitude: Latitude of the center point (e.g. 48.8566 for Paris)
+            longitude: Longitude of the center point (e.g. 2.3522 for Paris)
+            radius: Search radius in metres, max 10000 (default: 1000)
+            limit: Maximum number of results, max 500 (default: 10)
+            language: Wikipedia language code (default: "en")
+
+        Returns:
+            Dict containing:
+            - success: Boolean
+            - latitude, longitude, radius_metres: Query parameters echoed back
+            - total_results: Number of results returned
+            - results: List of articles each with title, distance_metres, latitude,
+                       longitude, type, country, region, and url
+        """
+        try:
+            with WikipediaAPI(language=language) as api:
+                results = api.get_pages_near_location(latitude, longitude, radius, limit)
+
+                formatted = []
+                for r in results:
+                    safe_title = (r['title'] or '').replace(' ', '_')
+                    formatted.append({
+                        **r,
+                        'url': f"https://{language}.wikipedia.org/wiki/{safe_title}",
+                    })
+
+                return {
+                    "success": True,
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "radius_metres": radius,
+                    "language": language,
+                    "total_results": len(formatted),
+                    "results": formatted,
+                }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "message": f"Error searching near ({latitude}, {longitude}): {str(e)}",
+            }
+
+    @mcp_server.tool(
+        name="get_wikipedia_on_this_day",
+        description="Get historical events, births, or deaths that occurred on a specific date according to Wikipedia"
+    )
+    def get_wikipedia_on_this_day(
+        month: int,
+        day: int,
+        event_type: str = "events",
+        language: str = "en"
+    ) -> dict[str, object]:
+        """
+        Retrieve historical events for a given calendar date.
+
+        Args:
+            month: Month number (1–12)
+            day: Day number (1–31)
+            event_type: One of "events", "births", "deaths", "holidays", "selected", "all"
+                        (default: "events")
+            language: Wikipedia language code (default: "en")
+
+        Returns:
+            Dict containing:
+            - success: Boolean
+            - month, day, event_type: Query parameters echoed back
+            - data: Dict keyed by event_type, each value is a list of entries with:
+                - year: The year the event occurred
+                - text: Description of the event
+                - pages: Related Wikipedia articles (title, description, url)
+        """
+        try:
+            with WikipediaAPI(language=language) as api:
+                data = api.get_on_this_day(month, day, event_type)
+
+                if data is None:
+                    return {
+                        "success": False,
+                        "message": f"No data returned for {month:02d}/{day:02d} ({event_type})",
+                    }
+
+                total = sum(len(v) for v in data.values())
+                return {
+                    "success": True,
+                    "month": month,
+                    "day": day,
+                    "event_type": event_type,
+                    "language": language,
+                    "total_entries": total,
+                    "data": data,
+                }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "message": f"Error getting on-this-day for {month}/{day}: {str(e)}",
+            }
+
+    @mcp_server.tool(
+        name="get_wikipedia_page_images",
+        description="Get all images and media from a Wikipedia page, including URLs, captions, and dimensions"
+    )
+    def get_wikipedia_page_images(
+        page_title: str,
+        language: str = "en"
+    ) -> dict[str, object]:
+        """
+        Retrieve all media items from a Wikipedia page.
+
+        Args:
+            page_title: The title of the Wikipedia page
+            language: Wikipedia language code (default: "en")
+
+        Returns:
+            Dict containing:
+            - success: Boolean
+            - page_title, language, url: Page metadata
+            - total_items: Number of media items found
+            - items: List of media items each with title, type, url, mime,
+                     width, height, caption, and description
+        """
+        try:
+            with WikipediaAPI(language=language) as api:
+                if not api.page_exists(page_title):
+                    return {
+                        "success": False,
+                        "message": f"Page '{page_title}' does not exist",
+                    }
+
+                items = api.get_page_images(page_title)
+                return {
+                    "success": True,
+                    "page_title": page_title,
+                    "language": language,
+                    "url": f"https://{language}.wikipedia.org/wiki/{page_title.replace(' ', '_')}",
+                    "total_items": len(items),
+                    "items": items,
+                }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "message": f"Error getting images for '{page_title}': {str(e)}",
+            }
