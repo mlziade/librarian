@@ -5,7 +5,7 @@ This module provides common methods for interacting with Wikipedia using the Med
 It includes functions for searching, retrieving page content, getting summaries, and more.
 """
 
-import httpx
+import httpx2 as httpx
 from urllib.parse import quote_plus
 from logging_config import get_logger
 

@@ -1,6 +1,4 @@
-from typing import Any
-import httpx
-from mcp.server.fastmcp import FastMCP
+from mcp.server import MCPServer
 from logging_config import setup_logging, get_logger
 
 # Configure logging
@@ -12,8 +10,8 @@ from tools.wikipedia_tools import register_wikipedia_tools
 from resources.wikipedia_resources import register_wikipedia_resources
 from resources.prompt_resources import register_prompt_resources
 
-# Initialize FastMCP server
-mcp = FastMCP("librarian")
+# Initialize MCP server
+mcp = MCPServer("librarian", version="0.1.0")
 
 # Register Wikipedia tools and resources
 register_wikipedia_tools(mcp)
